@@ -28,24 +28,25 @@ CONF = cfg.CONF
 
 class ConfigTestCase(test.TestCase):
 
-    @mock.patch("rally.objects.deploy.db.deployment_get")
+    @mock.patch("rally.common.objects.deploy.db.deployment_get")
     @mock.patch("rally.osclients.Clients.services",
                 return_value={"test_service_type": "test_service"})
     @mock.patch("rally.osclients.Clients.verified_keystone")
     @mock.patch("rally.verification.tempest.config.os.path.isfile",
                 return_value=True)
-    def setUp(self, mock_isfile, mock_verified_keystone, mock_services,
-              mock_get):
+    def setUp(self, mock_isfile, mock_clients_verified_keystone,
+              mock_clients_services, mock_deployment_get):
         super(ConfigTestCase, self).setUp()
         self.endpoint = {"username": "test",
                          "tenant_name": "test",
                          "password": "test",
                          "auth_url": "http://test/v2.0",
-                         "permission": "admin"}
-        mock_get.return_value = {"admin": self.endpoint}
+                         "permission": "admin",
+                         "admin_domain_name": "Default"}
+        mock_deployment_get.return_value = {"admin": self.endpoint}
         self.deployment = "fake_deployment"
         self.conf_generator = config.TempestConf(self.deployment)
-        self.conf_generator.clients.services = mock_services
+        self.conf_generator.clients.services = mock_clients_services
 
         keystone_patcher = mock.patch("rally.osclients.create_keystone_client")
         keystone_patcher.start()
@@ -53,7 +54,7 @@ class ConfigTestCase(test.TestCase):
 
     def _remove_default_section(self, items):
         # getting items from configparser by specified section name
-        # retruns also values from DEFAULT section
+        # returns also values from DEFAULT section
         defaults = (("log_file", "tempest.log"), ("debug", "True"),
                     ("use_stderr", "False"))
         return [item for item in items if item not in defaults]
@@ -95,9 +96,9 @@ class ConfigTestCase(test.TestCase):
 
     @mock.patch("rally.verification.tempest.config.TempestConf"
                 "._get_url")
-    def test__set_boto(self, mock_get_url):
+    def test__set_boto(self, mock_tempest_conf__get_url):
         url = "test_url"
-        mock_get_url.return_value = url
+        mock_tempest_conf__get_url.return_value = url
         self.conf_generator._set_boto()
         expected = (("ec2_url", url),
                     ("s3_url", url),
@@ -241,6 +242,7 @@ class ConfigTestCase(test.TestCase):
                     ("admin_username", self.endpoint["username"]),
                     ("admin_password", self.endpoint["password"]),
                     ("admin_tenant_name", self.endpoint["username"]),
+                    ("admin_domain_name", self.endpoint["admin_domain_name"]),
                     ("uri", self.endpoint["auth_url"]),
                     ("uri_v3", self.endpoint["auth_url"].replace("/v2.0",
                                                                  "/v3")))
@@ -315,8 +317,8 @@ class ConfigTestCase(test.TestCase):
             "service_available", "horizon"), "True")
 
     @mock.patch("rally.verification.tempest.config.requests.get")
-    def test__set_service_not_available_horizon(self, mock_requests_get):
-        mock_requests_get.side_effect = requests.Timeout()
+    def test__set_service_not_available_horizon(self, mock_get):
+        mock_get.side_effect = requests.Timeout()
         self.conf_generator._set_service_available()
         self.assertEqual(self.conf_generator.conf.get(
             "service_available", "horizon"), "False")

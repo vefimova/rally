@@ -17,7 +17,10 @@
 import random
 import time
 
-from rally.benchmark.scenarios import base
+from rally.task.scenarios import base
+
+# This is used to test relative import
+from test_relative_import import zzz
 
 
 class FakePlugin(base.Scenario):
@@ -37,5 +40,6 @@ class FakePlugin(base.Scenario):
 
         :param factor: influences the argument value for a time.sleep() call
         """
+        zzz.some_very_important_function()
         self._test1(factor)
         self._test2(factor)

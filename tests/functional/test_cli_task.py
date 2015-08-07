@@ -20,7 +20,6 @@ import unittest
 
 import mock
 
-from rally.cmd import envutils
 from tests.functional import utils
 
 
@@ -95,37 +94,37 @@ class TaskTestCase(unittest.TestCase):
 
     def test_results_with_wrong_task_id(self):
         rally = utils.Rally()
-        self.assertRaises(utils.RallyCmdError,
+        self.assertRaises(utils.RallyCliError,
                           rally, "task results --uuid %s" % FAKE_TASK_UUID)
 
     def test_abort_with_wrong_task_id(self):
         rally = utils.Rally()
-        self.assertRaises(utils.RallyCmdError,
+        self.assertRaises(utils.RallyCliError,
                           rally, "task abort --uuid %s" % FAKE_TASK_UUID)
 
     def test_delete_with_wrong_task_id(self):
         rally = utils.Rally()
-        self.assertRaises(utils.RallyCmdError,
+        self.assertRaises(utils.RallyCliError,
                           rally, "task delete --uuid %s" % FAKE_TASK_UUID)
 
     def test_detailed_with_wrong_task_id(self):
         rally = utils.Rally()
-        self.assertRaises(utils.RallyCmdError,
+        self.assertRaises(utils.RallyCliError,
                           rally, "task detailed --uuid %s" % FAKE_TASK_UUID)
 
     def test_report_with_wrong_task_id(self):
         rally = utils.Rally()
-        self.assertRaises(utils.RallyCmdError,
+        self.assertRaises(utils.RallyCliError,
                           rally, "task report --tasks %s" % FAKE_TASK_UUID)
 
     def test_sla_check_with_wrong_task_id(self):
         rally = utils.Rally()
-        self.assertRaises(utils.RallyCmdError,
+        self.assertRaises(utils.RallyCliError,
                           rally, "task sla_check --uuid %s" % FAKE_TASK_UUID)
 
     def test_status_with_wrong_task_id(self):
         rally = utils.Rally()
-        self.assertRaises(utils.RallyCmdError,
+        self.assertRaises(utils.RallyCliError,
                           rally, "task status --uuid %s" % FAKE_TASK_UUID)
 
     def test_report_one_uuid(self):
@@ -136,7 +135,13 @@ class TaskTestCase(unittest.TestCase):
         rally("task report --out %s" % rally.gen_report_path(extension="html"))
         self.assertTrue(os.path.exists(
             rally.gen_report_path(extension="html")))
-        self.assertRaises(utils.RallyCmdError,
+        self.assertRaises(utils.RallyCliError,
+                          rally, "task report --report %s" % FAKE_TASK_UUID)
+        rally("task report --junit --out %s" %
+              rally.gen_report_path(extension="junit"))
+        self.assertTrue(os.path.exists(
+            rally.gen_report_path(extension="junit")))
+        self.assertRaises(utils.RallyCliError,
                           rally, "task report --report %s" % FAKE_TASK_UUID)
 
     def test_report_bunch_uuids(self):
@@ -196,7 +201,7 @@ class TaskTestCase(unittest.TestCase):
                                    rally.gen_report_path(extension="html")))
         self.assertTrue(os.path.exists(
             rally.gen_report_path(extension="html")))
-        self.assertRaises(utils.RallyCmdError,
+        self.assertRaises(utils.RallyCliError,
                           rally, "task report --report %s" % FAKE_TASK_UUID)
 
     def test_delete(self):
@@ -228,7 +233,7 @@ class TaskTestCase(unittest.TestCase):
         self.assertIn(
             "deployment_name", rally("task list --all-deployments"))
 
-        self.assertRaises(utils.RallyCmdError,
+        self.assertRaises(utils.RallyCliError,
                           rally, "task list --status not_existing_status")
 
     def test_list_with_print_uuids_option(self):
@@ -270,11 +275,10 @@ class TaskTestCase(unittest.TestCase):
 
     def test_validate_is_invalid(self):
         rally = utils.Rally()
-        with mock.patch.dict("os.environ", utils.TEST_ENV):
-            deployment_id = envutils.get_global("RALLY_DEPLOYMENT")
+        deployment_id = utils.get_global("RALLY_DEPLOYMENT", rally.env)
         cfg = {"invalid": "config"}
         config = utils.TaskConfig(cfg)
-        self.assertRaises(utils.RallyCmdError,
+        self.assertRaises(utils.RallyCliError,
                           rally,
                           ("task validate --task %(task_file)s "
                            "--deployment %(deployment_id)s") %
@@ -283,28 +287,61 @@ class TaskTestCase(unittest.TestCase):
 
     def test_start(self):
         rally = utils.Rally()
-        with mock.patch.dict("os.environ", utils.TEST_ENV):
-            deployment_id = envutils.get_global("RALLY_DEPLOYMENT")
-            cfg = self._get_sample_task_config()
-            config = utils.TaskConfig(cfg)
-            output = rally(("task start --task %(task_file)s "
-                            "--deployment %(deployment_id)s") %
-                           {"task_file": config.filename,
-                            "deployment_id": deployment_id})
+        deployment_id = utils.get_global("RALLY_DEPLOYMENT", rally.env)
+        cfg = self._get_sample_task_config()
+        config = utils.TaskConfig(cfg)
+        output = rally(("task start --task %(task_file)s "
+                        "--deployment %(deployment_id)s") %
+                       {"task_file": config.filename,
+                        "deployment_id": deployment_id})
         result = re.search(
             r"(?P<task_id>[0-9a-f\-]{36}): started", output)
         self.assertIsNotNone(result)
 
+    def test_validate_with_plugin_paths(self):
+        rally = utils.Rally()
+        plugin_paths = ("tests/functional/extra/fake_dir1/,"
+                        "tests/functional/extra/fake_dir2/")
+        task_file = "tests/functional/extra/test_fake_scenario.json"
+        output = rally(("--plugin-paths %(plugin_paths)s "
+                        "task validate --task %(task_file)s") %
+                       {"task_file": task_file,
+                        "plugin_paths": plugin_paths})
+
+        self.assertIn("Task config is valid", output)
+
+        plugin_paths = ("tests/functional/extra/fake_dir1/"
+                        "fake_plugin1.py,"
+                        "tests/functional/extra/fake_dir2/"
+                        "fake_plugin2.py")
+        task_file = "tests/functional/extra/test_fake_scenario.json"
+        output = rally(("--plugin-paths %(plugin_paths)s "
+                        "task validate --task %(task_file)s") %
+                       {"task_file": task_file,
+                        "plugin_paths": plugin_paths})
+
+        self.assertIn("Task config is valid", output)
+
+        plugin_paths = ("tests/functional/extra/fake_dir1/,"
+                        "tests/functional/extra/fake_dir2/"
+                        "fake_plugin2.py")
+        task_file = "tests/functional/extra/test_fake_scenario.json"
+        output = rally(("--plugin-paths %(plugin_paths)s "
+                        "task validate --task %(task_file)s") %
+                       {"task_file": task_file,
+                        "plugin_paths": plugin_paths})
+
+        self.assertIn("Task config is valid", output)
+
     def _test_start_abort_on_sla_failure_success(self, cfg, times):
         rally = utils.Rally()
-        with mock.patch.dict("os.environ", utils.TEST_ENV):
-            deployment_id = envutils.get_global("RALLY_DEPLOYMENT")
-            config = utils.TaskConfig(cfg)
-            rally(("task start --task %(task_file)s "
-                   "--deployment %(deployment_id)s --abort-on-sla-failure") %
-                  {"task_file": config.filename,
-                   "deployment_id": deployment_id})
-            results = json.loads(rally("task results"))
+        deployment_id = utils.get_global("RALLY_DEPLOYMENT", rally.env)
+        config = utils.TaskConfig(cfg)
+        rally(("task start --task %(task_file)s "
+               "--deployment %(deployment_id)s --abort-on-sla-failure") %
+              {"task_file": config.filename,
+               "deployment_id": deployment_id})
+        results = json.loads(rally("task results"))
         iterations_completed = len(results[0]["result"])
         self.assertEqual(times, iterations_completed)
 
@@ -372,14 +409,13 @@ class TaskTestCase(unittest.TestCase):
 
     def _test_start_abort_on_sla_failure(self, cfg, times):
         rally = utils.Rally()
-        with mock.patch.dict("os.environ", utils.TEST_ENV):
-            deployment_id = envutils.get_global("RALLY_DEPLOYMENT")
-            config = utils.TaskConfig(cfg)
-            rally(("task start --task %(task_file)s "
-                   "--deployment %(deployment_id)s --abort-on-sla-failure") %
-                  {"task_file": config.filename,
-                   "deployment_id": deployment_id})
-            results = json.loads(rally("task results"))
+        deployment_id = utils.get_global("RALLY_DEPLOYMENT", rally.env)
+        config = utils.TaskConfig(cfg)
+        rally(("task start --task %(task_file)s "
+               "--deployment %(deployment_id)s --abort-on-sla-failure") %
+              {"task_file": config.filename,
+               "deployment_id": deployment_id})
+        results = json.loads(rally("task results"))
         iterations_completed = len(results[0]["result"])
         self.assertTrue(iterations_completed < times)
 
@@ -513,19 +549,18 @@ class TaskTestCase(unittest.TestCase):
 
     def test_use(self):
         rally = utils.Rally()
-        with mock.patch.dict("os.environ", utils.TEST_ENV):
-            deployment_id = envutils.get_global("RALLY_DEPLOYMENT")
-            config = utils.TaskConfig(self._get_sample_task_config())
-            output = rally(("task start --task %(task_file)s "
-                            "--deployment %(deployment_id)s") %
-                           {"task_file": config.filename,
-                            "deployment_id": deployment_id})
-            result = re.search(
-                r"(?P<uuid>[0-9a-f\-]{36}): started", output)
-            uuid = result.group("uuid")
-            rally("task use --task %s" % uuid)
-            current_task = envutils.get_global("RALLY_TASK")
-            self.assertEqual(uuid, current_task)
+        deployment_id = utils.get_global("RALLY_DEPLOYMENT", rally.env)
+        config = utils.TaskConfig(self._get_sample_task_config())
+        output = rally(("task start --task %(task_file)s "
+                        "--deployment %(deployment_id)s") %
+                       {"task_file": config.filename,
+                        "deployment_id": deployment_id})
+        result = re.search(
+            r"(?P<uuid>[0-9a-f\-]{36}): started", output)
+        uuid = result.group("uuid")
+        rally("task use --task %s" % uuid)
+        current_task = utils.get_global("RALLY_TASK", rally.env)
+        self.assertEqual(uuid, current_task)
 
 
 class SLATestCase(unittest.TestCase):
@@ -556,7 +591,7 @@ class SLATestCase(unittest.TestCase):
         cfg = self._get_sample_task_config(max_seconds_per_iteration=0.001)
         config = utils.TaskConfig(cfg)
         rally("task start --task %s" % config.filename)
-        self.assertRaises(utils.RallyCmdError, rally, "task sla_check")
+        self.assertRaises(utils.RallyCliError, rally, "task sla_check")
 
     def test_sla_success(self):
         rally = utils.Rally()
@@ -609,7 +644,7 @@ class SLAExtraFlagsTestCase(unittest.TestCase):
         ]
         try:
             rally("task sla_check --json", getjson=True)
-        except utils.RallyCmdError as expected_error:
+        except utils.RallyCliError as expected_error:
             self.assertEqual(json.loads(expected_error.output), expected)
         else:
             self.fail("`rally task sla_check` command should return non-zero "
@@ -637,7 +672,7 @@ class SLAExtraFlagsTestCase(unittest.TestCase):
         ]
         try:
             rally("task sla_check --json", getjson=True)
-        except utils.RallyCmdError as expected_error:
+        except utils.RallyCliError as expected_error:
             self.assertEqual(json.loads(expected_error.output), expected)
         else:
             self.fail("`rally task sla_check` command should return non-zero "

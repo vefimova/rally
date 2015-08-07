@@ -13,11 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from rally.benchmark.scenarios import base
-from rally.benchmark.sla import base as sla_base
+from rally.common.plugin import discover
 from rally.common import utils
-from rally import deploy
-from rally.deploy import serverprovider
+from rally.deployment import engine
+from rally.deployment.serverprovider import provider
+from rally.task.scenarios import base
+from rally.task import sla
 from tests.unit import test
 
 
@@ -41,7 +42,7 @@ class DocstringsTestCase(test.TestCase):
 
     def test_all_scenarios_have_docstrings(self):
         ignored_params = ["self", "scenario_obj"]
-        for scenario_group in utils.itersubclasses(base.Scenario):
+        for scenario_group in discover.itersubclasses(base.Scenario):
             if scenario_group.__module__.startswith("tests."):
                 continue
 
@@ -75,18 +76,18 @@ class DocstringsTestCase(test.TestCase):
                                            "param": param})
 
     def test_all_scenario_groups_have_docstrings(self):
-        for scenario_group in utils.itersubclasses(base.Scenario):
+        for scenario_group in discover.itersubclasses(base.Scenario):
             self._assert_class_has_docstrings(scenario_group,
                                               long_description=False)
 
     def test_all_deploy_engines_have_docstrings(self):
-        for deploy_engine in utils.itersubclasses(deploy.EngineFactory):
+        for deploy_engine in engine.Engine.get_all():
             self._assert_class_has_docstrings(deploy_engine)
 
     def test_all_server_providers_have_docstrings(self):
-        for provider in utils.itersubclasses(serverprovider.ProviderFactory):
-            self._assert_class_has_docstrings(provider)
+        for _provider in provider.ProviderFactory.get_all():
+            self._assert_class_has_docstrings(_provider)
 
     def test_all_SLA_have_docstrings(self):
-        for sla in utils.itersubclasses(sla_base.SLA):
-            self._assert_class_has_docstrings(sla, long_description=False)
+        for s in discover.itersubclasses(sla.SLA):
+            self._assert_class_has_docstrings(s, long_description=False)

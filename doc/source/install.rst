@@ -21,21 +21,74 @@ Installation
 Automated installation
 ----------------------
 
-.. code-block:: none
-
-   git clone https://git.openstack.org/stackforge/rally
-   ./rally/install_rally.sh
-
-**Notes:** The installation script should be run as root or as a normal user using **sudo**. Rally requires either the Python 2.6 or the Python 2.7 version.
-
-
-**Alternatively**, you can install Rally in a **virtual environment**:
+The easiest way to install Rally is by executing its `installation script
+<https://raw.githubusercontent.com/stackforge/rally/master/install_rally.sh>`_
 
 .. code-block:: none
 
-   git clone https://git.openstack.org/stackforge/rally
-   ./rally/install_rally.sh -v
+    wget -q -O- https://raw.githubusercontent.com/openstack/rally/master/install_rally.sh | bash
+    # or using curl
+    curl https://raw.githubusercontent.com/openstack/rally/master/install_rally.sh | bash
 
+The installation script will also check if all the software required
+by Rally is already installed in your system; if run as **root** user
+and some dependency is missing it will ask you if you want to install
+the required packages.
+
+By default it will install Rally in a virtualenv in ``~/rally`` when
+ran as standard user, or install system wide when ran as root. You can
+install Rally in a venv by using the option ``--target``:
+
+.. code-block:: none
+
+    ./install_rally.sh --target /foo/bar
+
+You can also install Rally system wide by running script as root and
+without ``--target`` option:
+
+.. code-block:: none
+
+    sudo ./install_rally.sh
+
+
+Run ``./install_rally.sh`` with option ``--help`` to have a list of all
+available options:
+
+.. code-block:: node
+
+     $ ./install_rally.sh --help
+     Usage: install_rally.sh [options]
+
+     This script will install rally either in the system (as root) or in a virtual environment.
+
+    Options:
+      -h, --help             Print this help text
+      -v, --verbose          Verbose mode
+      -s, --system           Instead of creating a virtualenv, install as
+                             system package.
+      -d, --target DIRECTORY Install Rally virtual environment into DIRECTORY.
+                             (Default: $HOME/rally).
+      -f, --overwrite        Remove target directory if it already exists.
+      -y, --yes              Do not ask for confirmation: assume a 'yes' reply
+                             to every question.
+      -D, --dbtype TYPE      Select the database type. TYPE can be one of
+                             'sqlite', 'mysql', 'postgres'.
+                             Default: sqlite
+      --db-user USER         Database user to use. Only used when --dbtype
+                             is either 'mysql' or 'postgres'.
+      --db-password PASSWORD Password of the database user. Only used when
+                             --dbtype is either 'mysql' or 'postgres'.
+      --db-host HOST         Database host. Only used when --dbtype is
+                             either 'mysql' or 'postgres'
+      --db-name NAME         Name of the database. Only used when --dbtype is
+                             either 'mysql' or 'postgres'
+      -p, --python EXE       The python interpreter to use. Default: /usr/bin/python.
+
+
+**Notes:** the script will check if all the software required by Rally
+is already installed in your system. If this is not the case, it will
+exit, suggesting you the command to issue **as root** in order to
+install the dependencies.
 
 You also have to set up the **Rally database** after the installation is complete:
 
@@ -52,7 +105,7 @@ It is also possible to install Rally with DevStack. First, clone the correspondi
 .. code-block:: none
 
    git clone https://git.openstack.org/openstack-dev/devstack
-   git clone https://github.com/stackforge/rally
+   git clone https://github.com/openstack/rally
 
 Then, configure DevStack to run Rally:
 
@@ -61,7 +114,8 @@ Then, configure DevStack to run Rally:
    cp rally/contrib/devstack/lib/rally devstack/lib/
    cp rally/contrib/devstack/extras.d/70-rally.sh devstack/extras.d/
    cd devstack
-   echo "enable_service rally" >> localrc
+   cp samples/local.conf local.conf
+   echo "enable_service rally" >> local.conf
 
 Finally, run DevStack as usually:
 
@@ -113,7 +167,7 @@ You may want to save last command as an alias:
    echo 'alias dock_rally="docker run -t -i -v ~/rally_home:/home/rally rallyforge/rally"' >> ~/.bashrc
 
 After executing ``dock_rally`` alias, or ``docker run`` you got bash running inside container with
-rally installed. You may do anytnig with rally, but you need to create db first:
+rally installed. You may do anything with rally, but you need to create db first:
 
 .. code-block:: none
 
@@ -123,5 +177,16 @@ rally installed. You may do anytnig with rally, but you need to create db first:
    There are no deployments. To create a new deployment, use:
    rally deployment create
    rally@1cc98e0b5941:~$
+
+In case you have SELinux enabled and rally fails to create database, try
+executing the following commands to put SELinux into Permissive Mode on the host machine.
+
+.. code-block:: none
+
+   $ sed -i 's/SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
+   $ setenforce permissive
+
+Rally currently has no SELinux policy, which is why it must be run in Permissive mode
+for certain configurations. If you can help create an SELinux policy for Rally, please contribute!
 
 More about docker: `https://www.docker.com/ <https://www.docker.com/>`_

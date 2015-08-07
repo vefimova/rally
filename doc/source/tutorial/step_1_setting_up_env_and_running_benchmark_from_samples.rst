@@ -18,6 +18,9 @@
 Step 1. Setting up the environment and running a benchmark from samples
 =======================================================================
 
+.. contents::
+   :local:
+
 In this demo, we will show how to perform some basic operations in Rally, such as registering an OpenStack cloud, benchmarking it and generating benchmark reports.
 
 We assume that you have a :ref:`Rally installation <tutorial_step_0_installation>` and an already existing OpenStack deployment with Keystone available at *<KEYSTONE_AUTH_URL>*.
@@ -26,7 +29,7 @@ We assume that you have a :ref:`Rally installation <tutorial_step_0_installation
 Registering an OpenStack deployment in Rally
 --------------------------------------------
 
-First, you have to provide Rally with an Openstack deployment it is going to benchmark. This should be done either through `OpenRC files <http://docs.openstack.org/user-guide/content/cli_openrc.html>`_ or through deployment `configuration files <https://github.com/stackforge/rally/tree/master/samples/deployments>`_. In case you already have an *OpenRC*, it is extremely simple to register a deployment with the *deployment create* command:
+First, you have to provide Rally with an Openstack deployment it is going to benchmark. This should be done either through `OpenRC files <http://docs.openstack.org/user-guide/content/cli_openrc.html>`_ or through deployment `configuration files <https://github.com/openstack/rally/tree/master/samples/deployments>`_. In case you already have an *OpenRC*, it is extremely simple to register a deployment with the *deployment create* command:
 
 .. code-block:: none
 
@@ -35,12 +38,12 @@ First, you have to provide Rally with an Openstack deployment it is going to ben
    +--------------------------------------+----------------------------+------------+------------------+--------+
    | uuid                                 | created_at                 | name       | status           | active |
    +--------------------------------------+----------------------------+------------+------------------+--------+
-   | 28f90d74-d940-4874-a8ee-04fda59576da | 2015-01-18 00:11:38.059983 | devstack_2 | deploy->finished |        |
+   | 28f90d74-d940-4874-a8ee-04fda59576da | 2015-01-18 00:11:38.059983 | existing   | deploy->finished |        |
    +--------------------------------------+----------------------------+------------+------------------+--------+
    Using deployment : <Deployment UUID>
    ...
 
-Alternatively, you can put the information about your cloud credentials into a JSON configuration file (let's call it `existing.json <https://github.com/stackforge/rally/blob/master/samples/deployments/existing.json>`_). The *deployment create* command has a slightly different syntax in this case:
+Alternatively, you can put the information about your cloud credentials into a JSON configuration file (let's call it `existing.json <https://github.com/openstack/rally/blob/master/samples/deployments/existing.json>`_). The *deployment create* command has a slightly different syntax in this case:
 
 .. code-block:: none
 
@@ -48,7 +51,7 @@ Alternatively, you can put the information about your cloud credentials into a J
    +--------------------------------------+----------------------------+------------+------------------+--------+
    | uuid                                 | created_at                 | name       | status           | active |
    +--------------------------------------+----------------------------+------------+------------------+--------+
-   | 28f90d74-d940-4874-a8ee-04fda59576da | 2015-01-18 00:11:38.059983 | devstack_2 | deploy->finished |        |
+   | 28f90d74-d940-4874-a8ee-04fda59576da | 2015-01-18 00:11:38.059983 | existing   | deploy->finished |        |
    +--------------------------------------+----------------------------+------------+------------------+--------+
    Using deployment : <Deployment UUID>
    ...
@@ -81,7 +84,7 @@ Finally, the *deployment check* command enables you to verify that your current 
 Benchmarking
 ------------
 
-Now that we have a working and registered deployment, we can start benchmarking it. The sequence of benchmarks to be launched by Rally should be specified in a *benchmark task configuration file* (either in *JSON* or in *YAML* format). Let's try one of the sample benchmark tasks available in `samples/tasks/scenarios <https://github.com/stackforge/rally/tree/master/samples/tasks/scenarios>`_, say, the one that boots and deletes multiple servers (*samples/tasks/scenarios/nova/boot-and-delete.json*):
+Now that we have a working and registered deployment, we can start benchmarking it. The sequence of benchmarks to be launched by Rally should be specified in a *benchmark task configuration file* (either in *JSON* or in *YAML* format). Let's try one of the sample benchmark tasks available in `samples/tasks/scenarios <https://github.com/openstack/rally/tree/master/samples/tasks/scenarios>`_, say, the one that boots and deletes multiple servers (*samples/tasks/scenarios/nova/boot-and-delete.json*):
 
 
 .. code-block:: none
@@ -167,7 +170,7 @@ To start a benchmark task, run the task start command (you can also add the *-v*
 
     HINTS:
     * To plot HTML graphics with this data, run:
-        rally task plot2html 6fd9a19f-5cf8-4f76-ab72-2e34bb1d4996 --out output.html
+        rally task report 6fd9a19f-5cf8-4f76-ab72-2e34bb1d4996 --out output.html
 
     * To get raw JSON output of task results, run:
         rally task results 6fd9a19f-5cf8-4f76-ab72-2e34bb1d4996
@@ -184,19 +187,21 @@ Note that the Rally input task above uses *regular expressions* to specify the i
    |                 UUID                 |          Name         |  Size (B) |
    +--------------------------------------+-----------------------+-----------+
    | 8dfd6098-0c26-4cb5-8e77-1ecb2db0b8ae |  CentOS 6.5 (x86_64)  | 344457216 |
-   | 2b8d119e-9461-48fc-885b-1477abe2edc5 | CirrOS 0.3.1 (x86_64) |  13147648 |
+   | 2b8d119e-9461-48fc-885b-1477abe2edc5 | CirrOS 0.3.4 (x86_64) |  13287936 |
    +--------------------------------------+-----------------------+-----------+
 
    $ rally show flavors
-   +---------------------+-----------+-------+----------+-----------+-----------+
-   | ID                  |    Name   | vCPUs | RAM (MB) | Swap (MB) | Disk (GB) |
-   +---------------------+-----------+-------+----------+-----------+-----------+
-   | 1                   |  m1.tiny  |   1   |   512    |           |     1     |
-   | 2                   |  m1.small |   1   |   2048   |           |     20    |
-   | 3                   | m1.medium |   2   |   4096   |           |     40    |
-   | 4                   |  m1.large |   4   |   8192   |           |     80    |
-   | 5                   | m1.xlarge |   8   |  16384   |           |    160    |
-   +---------------------+-----------+-------+----------+-----------+-----------+
+
+   Flavors for user `admin` in tenant `admin`:
+   +----+-----------+-------+----------+-----------+-----------+
+   | ID | Name      | vCPUs | RAM (MB) | Swap (MB) | Disk (GB) |
+   +----+-----------+-------+----------+-----------+-----------+
+   | 1  | m1.tiny   | 1     | 512      |           | 1         |
+   | 2  | m1.small  | 1     | 2048     |           | 20        |
+   | 3  | m1.medium | 2     | 4096     |           | 40        |
+   | 4  | m1.large  | 4     | 8192     |           | 80        |
+   | 5  | m1.xlarge | 8     | 16384    |           | 160       |
+   +----+-----------+-------+----------+-----------+-----------+
 
 
 Report generation
@@ -208,12 +213,12 @@ One of the most beautiful things in Rally is its task report generation mechanis
 
    $ rally task report --out=report1.html --open
 
-This will produce an HTML page with the overview of all the scenarios that you've included into the last benchmark task completed in Rally (in our case, this is just one scenario, and we will cover the topic of multiple scenarios in one task in :ref:`the next step of our tutorial <tutorial_step_3_adding_success_criteria_for_benchmarks>`):
+This will produce an HTML page with the overview of all the scenarios that you've included into the last benchmark task completed in Rally (in our case, this is just one scenario, and we will cover the topic of multiple scenarios in one task in :ref:`the next step of our tutorial <tutorial_step_2_input_task_format>`):
 
 .. image:: ../images/Report-Overview.png
    :align: center
 
-This aggregating table shows the duration of the load produced by the corresponding scenario (*"Load duration"*), the overall benchmark scenario execution time, including the duration of environment preparation with contexts (*"Full duration"*), the number of iterations of each scenario (*"Iterations"*), the type of the load used while running the scenario (*"Runner"*), the number of failed iterations (*"Errors"*) and finally whether the scenario has passed certain Success Criteria (*"SLA"*) that were set up by the user in the input configuration file (we will cover these criteria in :ref:`one of the next steps <tutorial_step_3_sla>`).
+This aggregating table shows the duration of the load produced by the corresponding scenario (*"Load duration"*), the overall benchmark scenario execution time, including the duration of environment preparation with contexts (*"Full duration"*), the number of iterations of each scenario (*"Iterations"*), the type of the load used while running the scenario (*"Runner"*), the number of failed iterations (*"Errors"*) and finally whether the scenario has passed certain Success Criteria (*"SLA"*) that were set up by the user in the input configuration file (we will cover these criteria in :ref:`one of the next steps <tutorial_step_4_adding_success_criteria_for_benchmarks>`).
 
 By navigating in the left panel, you can switch to the detailed view of the benchmark results for the only scenario we included into our task, namely **NovaServers.boot_and_delete_server**:
 
@@ -228,4 +233,4 @@ This page, along with the description of the success criteria used to check the 
 Note that all the charts on the report pages are very dynamic: you can change their contents by clicking the switches above the graph and see more information about its single points by hovering the cursor over these points.
 
 Take some time to play around with these graphs
-and then move on to :ref:`the next step of our tutorial <tutorial_step_2_running_multple_benchmarks_in_a_single_task>`.
+and then move on to :ref:`the next step of our tutorial <tutorial_step_2_input_task_format>`.

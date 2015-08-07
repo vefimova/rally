@@ -1,0 +1,195 @@
+# Copyright 2014: Mirantis Inc.
+# All Rights Reserved.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+import ddt
+
+from rally import exceptions
+from rally.task.processing import utils
+from tests.unit import test
+
+
+class MathTestCase(test.TestCase):
+
+    def test_percentile(self):
+        lst = list(range(1, 101))
+        result = utils.percentile(lst, 0.1)
+        self.assertEqual(result, 10.9)
+
+    def test_percentile_value_none(self):
+        result = utils.percentile(None, 0.1)
+        self.assertIsNone(result)
+
+    def test_percentile_equal(self):
+        lst = list(range(1, 101))
+        result = utils.percentile(lst, 1)
+        self.assertEqual(result, 100)
+
+    def test_mean(self):
+        lst = list(range(1, 100))
+        result = utils.mean(lst)
+        self.assertEqual(result, 50.0)
+
+    def test_mean_empty_list(self):
+        lst = []
+        self.assertRaises(exceptions.InvalidArgumentsException,
+                          utils.mean, lst)
+
+    def test_median_single_value(self):
+        lst = [5]
+        result = utils.median(lst)
+        self.assertEqual(5, result)
+
+    def test_median_odd_sized_list(self):
+        lst = [1, 2, 3, 4, 5]
+        result = utils.median(lst)
+        self.assertEqual(3, result)
+
+    def test_median_even_sized_list(self):
+        lst = [1, 2, 3, 4]
+        result = utils.median(lst)
+        self.assertEqual(2.5, result)
+
+    def test_median_empty_list(self):
+        lst = []
+        self.assertRaises(ValueError,
+                          utils.median, lst)
+
+        lst = None
+        self.assertRaises(ValueError,
+                          utils.median, lst)
+
+    def _compare_items_lists(self, list1, list2):
+        """Items lists comparison, compatible with Python 2.6/2.7.
+
+        :param list1: items list [(a1, b1), (a2, b2) ...]
+        :param list2: items list [(a1, b1), (a2, b2) ...]
+        """
+        compare_float = lambda f1, f2: abs(f2 - f2) < 0.1
+        for a, b in zip(list1, list2):
+            a1, a2, b1, b2 = (a + b)
+            self.assertEqual(a1, b1)
+            if type(a2) is float:
+                # Float representation is different in Python 2.6/2.7,
+                # so we need to be sure that values are close to each other
+                self.assertTrue(compare_float(a2, b2))
+            else:
+                self.assertEqual(a2, b2)
+
+    def test_compress(self):
+        data64 = range(64)
+        data4 = [4, 2, 1, 3]
+        mixed = [2, "5", None, 0.5]
+        alt_normalize = str
+        alt_merge = lambda a, b: str(a) + str(b)
+        compress = lambda lst: [(k + 1, float(v)) for k, v in enumerate(lst)]
+
+        # Long list
+        self.assertEqual(utils.compress(data64), compress(data64))
+        self._compare_items_lists(
+            utils.compress(data64, limit=4),
+            [(17, 15.0), (33, 31.01), (49, 47.0), (64, 62.0)])
+        self.assertEqual(
+            utils.compress(data64, limit=4,
+                           normalize=alt_normalize, merge=alt_merge),
+            [(17, "012345678910111213141516"),
+             (33, "17181920212223242526272829303132"),
+             (49, "33343536373839404142434445464748"),
+             (64, "495051525354555657585960616263")])
+
+        # Short list
+        self.assertEqual(utils.compress(data4, limit=2),
+                         [(3, 2.0), (4, 3.0)])
+        self.assertEqual(utils.compress(data4, normalize=alt_normalize),
+                         [(1, "4"), (2, "2"), (3, "1"), (4, "3")])
+
+        # List with mixed data types
+        self.assertEqual(utils.compress(mixed),
+                         [(1, 2.0), (2, 5.0), (3, 0.0), (4, 0.5)])
+        self.assertEqual(utils.compress(mixed, normalize=str),
+                         [(1, "2"), (2, "5"), (3, "None"), (4, "0.5")])
+        self.assertRaises(TypeError, utils.compress, mixed, normalize=int)
+        self.assertEqual(
+            utils.compress(mixed, normalize=alt_normalize, merge=alt_merge),
+            [(1, "2"), (2, "5"), (3, "None"), (4, "0.5")])
+
+
+class AtomicActionsDataTestCase(test.TestCase):
+
+    def test_get_atomic_actions_data(self):
+        raw_data = [
+            {
+                "error": [],
+                "duration": 3,
+                "atomic_actions": {
+                    "action1": 1,
+                    "action2": 2
+                }
+            },
+            {
+                "error": ["some", "error", "occurred"],
+                "duration": 1.9,
+                "atomic_actions": {
+                    "action1": 0.5,
+                    "action2": 1.4
+                }
+            },
+            {
+                "error": [],
+                "duration": 8,
+                "atomic_actions": {
+                    "action1": 4,
+                    "action2": 4
+                }
+            }
+        ]
+
+        atomic_actions_data = {
+            "action1": [1, 0.5, 4],
+            "action2": [2, 1.4, 4],
+            "total": [3, 8]
+        }
+
+        output = utils.get_atomic_actions_data(raw_data)
+        self.assertEqual(output, atomic_actions_data)
+
+
+@ddt.ddt
+class GraphZipperTestCase(test.TestCase):
+
+    @ddt.data({"data_stream": list(range(1, 11)), "zipped_size": 8,
+               "expected": [[1, 1.2], [3, 2.4], [4, 3.6], [5, 4.8], [7, 6.2],
+                            [8, 7.4], [9, 8.6], [10, 9.8]]},
+              {"data_stream": [.005, .8, 22, .004, .7, 12, .5, .07, .02] * 10,
+               "zipped_size": 8, "expected": [
+                   [1, 3.769244444444445], [18, 4.706933333333334],
+                   [29, 4.339911111111111], [40, 3.2279111111111116],
+                   [52, 3.769244444444445], [63, 4.706933333333334],
+                   [74, 4.339911111111111], [90, 3.2279111111111116]]},
+              {"data_stream": list(range(1, 100)), "zipped_size": 1000,
+               "expected": [[i, i] for i in range(1, 100)]},
+              {"data_stream": [1, 4, 11, None, 42], "zipped_size": 1000,
+               "expected": [[1, 1], [2, 4], [3, 11], [4, 0], [5, 42]]})
+    @ddt.unpack
+    def test_add_point_and_get_zipped_graph(self, data_stream=None,
+                                            zipped_size=None, expected=None):
+        merger = utils.GraphZipper(len(data_stream), zipped_size)
+        [merger.add_point(value) for value in data_stream]
+        self.assertEqual(expected, merger.get_zipped_graph())
+
+    def test_add_point_raises(self):
+        merger = utils.GraphZipper(10, 8)
+        self.assertRaises(TypeError, merger.add_point)
+        [merger.add_point(1) for value in range(10)]
+        self.assertRaises(RuntimeError, merger.add_point, 1)

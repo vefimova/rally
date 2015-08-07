@@ -82,21 +82,16 @@ class _EndpointType(utils.ImmutableMixin, utils.EnumMixin):
     PUBLIC = "public"
 
 
-class _RunnerType(utils.ImmutableMixin, utils.EnumMixin):
-    SERIAL = "serial"
-    CONSTANT = "constant"
-    CONSTANT_FOR_DURATION = "constant_for_duration"
-    RPS = "rps"
-
-
 class _Service(utils.ImmutableMixin, utils.EnumMixin):
     """OpenStack services names, by rally convention."""
 
     NOVA = "nova"
+    NOVA_NET = "nova-network"
     NOVAV21 = "novav21"
     NOVAV3 = "novav3"
     CINDER = "cinder"
     CINDERV2 = "cinderv2"
+    MANILA = "manila"
     EC2 = "ec2"
     GLANCE = "glance"
     CLOUD = "cloud"
@@ -111,6 +106,7 @@ class _Service(utils.ImmutableMixin, utils.EnumMixin):
     SWIFT = "swift"
     MISTRAL = "mistral"
     MURANO = "murano"
+    IRONIC = "ironic"
 
 
 class _ServiceType(utils.ImmutableMixin, utils.EnumMixin):
@@ -118,6 +114,7 @@ class _ServiceType(utils.ImmutableMixin, utils.EnumMixin):
 
     VOLUME = "volume"
     VOLUMEV2 = "volumev2"
+    SHARE = "share"
     EC2 = "ec2"
     IMAGE = "image"
     CLOUD = "cloudformation"
@@ -135,6 +132,7 @@ class _ServiceType(utils.ImmutableMixin, utils.EnumMixin):
     OBJECT_STORE = "object-store"
     WORKFLOW_EXECUTION = "workflowv2"
     APPLICATION_CATALOG = "application_catalog"
+    BARE_METAL = "baremetal"
 
     def __init__(self):
         self.__names = {
@@ -142,7 +140,8 @@ class _ServiceType(utils.ImmutableMixin, utils.EnumMixin):
             self.COMPUTEV21: _Service.NOVAV21,
             self.COMPUTEV3: _Service.NOVAV3,
             self.VOLUME: _Service.CINDER,
-            self.VOLUMEV2: _Service.CINDER,
+            self.VOLUMEV2: _Service.CINDERV2,
+            self.SHARE: _Service.MANILA,
             self.EC2: _Service.EC2,
             self.IMAGE: _Service.GLANCE,
             self.CLOUD: _Service.CLOUD,
@@ -156,7 +155,8 @@ class _ServiceType(utils.ImmutableMixin, utils.EnumMixin):
             self.DATA_PROCESSING: _Service.SAHARA,
             self.OBJECT_STORE: _Service.SWIFT,
             self.WORKFLOW_EXECUTION: _Service.MISTRAL,
-            self.APPLICATION_CATALOG: _Service.MURANO
+            self.APPLICATION_CATALOG: _Service.MURANO,
+            self.BARE_METAL: _Service.IRONIC,
         }
 
     def __getitem__(self, service_type):
@@ -171,7 +171,6 @@ class _ServiceType(utils.ImmutableMixin, utils.EnumMixin):
 TaskStatus = _TaskStatus()
 DeployStatus = _DeployStatus()
 EndpointPermission = _EndpointPermission()
-RunnerType = _RunnerType()
 ServiceType = _ServiceType()
 Service = _Service()
 EndpointType = _EndpointType()

@@ -3,9 +3,13 @@ MAINTAINER Sergey Skripnick <sskripnick@mirantis.com>
 COPY . /tmp/rally
 RUN apt-get update && \
     apt-get -y install git python2.7 bash-completion python-dev libffi-dev \
-                       libxml2-dev libxslt1-dev libssl-dev &&\
+                       libxml2-dev libxslt1-dev libssl-dev libpq-dev wget \
+                       build-essential &&\
+    wget https://raw.github.com/pypa/pip/master/contrib/get-pip.py -O /tmp/pip.py &&\
+    python /tmp/pip.py && rm /tmp/pip.py &&\
     cd /tmp/rally &&\
     ./install_rally.sh &&\
+    pip install -r optional-requirements.txt &&\
     sed 's|#*connection *=.*|connection = sqlite:////home/rally/.rally.sqlite|' -i /etc/rally/rally.conf &&\
     apt-get -y remove libssl-dev libffi-dev python-dev libxml2-dev \
                       libxslt1-dev build-essential gcc-4.8 python3 && \

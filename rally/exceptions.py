@@ -17,6 +17,7 @@
 import sys
 
 from oslo_config import cfg
+import six
 
 from rally.common.i18n import _
 from rally.common import log as logging
@@ -76,7 +77,7 @@ class RallyException(Exception):
         if self.__class__.__name__.endswith("_Remote"):
             return self.args[0]
         else:
-            return unicode(self)
+            return six.text_type(self)
 
 
 class ImmutableException(RallyException):
@@ -115,32 +116,18 @@ class NotFoundException(RallyException):
     msg_fmt = _("Not found.")
 
 
-class NoSuchPlugin(NotFoundException):
-    msg_fmt = _("There is no plugin with name: `%(name)s`.")
+class PluginNotFound(NotFoundException):
+    msg_fmt = _("There is no plugin with name: `%(name)s` in "
+                "`%(namespace)s` namespace.")
 
 
-class NoSuchEngine(NotFoundException):
-    msg_fmt = _("There is no engine with name `%(engine_name)s`.")
-
-
-class NoSuchVMProvider(NotFoundException):
-    msg_fmt = _("There is no vm provider with name `%(vm_provider_name)s`.")
+class PluginWithSuchNameExists(RallyException):
+    msg_fmt = _("Plugin with such name: `%(name)s` already exists in "
+                "`%(namespace)s` namespace")
 
 
 class NoSuchScenario(NotFoundException):
     msg_fmt = _("There is no benchmark scenario with name `%(name)s`.")
-
-
-class NoSuchRunner(NotFoundException):
-    msg_fmt = _("There is no benchmark runner with type `%(type)s`.")
-
-
-class NoSuchContext(NotFoundException):
-    msg_fmt = _("There is no benchmark context with name `%(name)s`.")
-
-
-class NoSuchSLA(NotFoundException):
-    msg_fmt = _("There is no SLA with name `%(name)s`.")
 
 
 class NoSuchConfigField(NotFoundException):
@@ -168,6 +155,10 @@ class DeploymentIsBusy(RallyException):
                 "uuid=%(uuid)s.")
 
 
+class RallyAssertionError(RallyException):
+    msg_fmt = _("Assertion error: %(message)s")
+
+
 class ResourceNotFound(NotFoundException):
     msg_fmt = _("Resource with id=%(id)s not found.")
 
@@ -187,7 +178,7 @@ class GetResourceNotFound(GetResourceFailure):
 
 
 class GetResourceErrorStatus(GetResourceFailure):
-    msg_fmt = _("Resource %(resource)s has %(status)s status: %(fault)s")
+    msg_fmt = _("Resource %(resource)s has %(status)s status.")
 
 
 class ScriptError(RallyException):

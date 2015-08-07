@@ -23,11 +23,11 @@ import requests
 from six.moves import configparser
 from six.moves.urllib import parse
 
+from rally.common import db
 from rally.common.i18n import _
 from rally.common import log as logging
-from rally import db
+from rally.common import objects
 from rally import exceptions
-from rally import objects
 from rally import osclients
 
 
@@ -36,11 +36,14 @@ LOG = logging.getLogger(__name__)
 
 IMAGE_OPTS = [
     cfg.StrOpt("cirros_version",
-               default="0.3.2",
+               default="0.3.4",
                help="Version of cirros image"),
     cfg.StrOpt("cirros_image",
-               default="cirros-0.3.2-x86_64-disk.img",
+               default="cirros-0.3.4-x86_64-disk.img",
                help="Cirros image name"),
+    cfg.StrOpt("cirros_base_url",
+               default="http://download.cirros-cloud.net",
+               help="Cirros image base URL"),
 ]
 CONF = cfg.CONF
 CONF.register_opts(IMAGE_OPTS, "image")
@@ -78,8 +81,9 @@ class TempestConf(object):
             self._load_img()
 
     def _load_img(self):
-        cirros_url = ("http://download.cirros-cloud.net/%s/%s" %
-                      (CONF.image.cirros_version,
+        cirros_url = ("%s/%s/%s" %
+                      (CONF.image.cirros_base_url,
+                       CONF.image.cirros_version,
                        CONF.image.cirros_image))
         try:
             response = requests.get(cirros_url, stream=True)
@@ -196,6 +200,8 @@ class TempestConf(object):
         self.conf.set(section_name, "uri", self.endpoint["auth_url"])
         self.conf.set(section_name, "uri_v3",
                       self.endpoint["auth_url"].replace("/v2.0", "/v3"))
+        self.conf.set(section_name, "admin_domain_name",
+                      self.endpoint["admin_domain_name"])
 
     def _set_network(self, section_name="network"):
         if "neutron" in self.available_services:
